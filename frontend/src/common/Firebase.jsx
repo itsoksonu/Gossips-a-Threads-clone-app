@@ -3,12 +3,12 @@ import { initializeApp } from "firebase/app";
 import {getAuth, GoogleAuthProvider, signInWithPopup} from "firebase/auth"
 
 const firebaseConfig = {
-    apiKey: "AIzaSyBJfiyrOfUYdd6yZA5TaXfp9YHcvXUHHaY",
-    authDomain: "gossips-app.firebaseapp.com",
-    projectId: "gossips-app",
-    storageBucket: "gossips-app.firebasestorage.app",
-    messagingSenderId: "124129405104",
-    appId: "1:124129405104:web:82c439706ed19a6e493375"
+    apiKey: "",
+    authDomain: "",
+    projectId: "",
+    storageBucket: "",
+    messagingSenderId: "",
+    appId: ""
   };
 
 // eslint-disable-next-line no-unused-vars
