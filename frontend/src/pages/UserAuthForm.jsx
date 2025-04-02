@@ -1,0 +1,215 @@
+import React, { useContext, useRef, useState } from "react";
+import { useNavigate, Navigate } from "react-router-dom";
+import InputBox from "../components/InputBox";
+import { Link } from "react-router-dom";
+import { UserContext } from "../contexts/UserContext";
+import { Toaster, toast } from "react-hot-toast";
+import axios from "axios";
+import { storeInSession } from "../common/Session";
+import { authWithGoogle } from "../common/Firebase";
+import { Loader2 } from "lucide-react";
+
+const UserAuthForm = ({ type }) => {
+  const { userAuth: { token }, setUserAuth } = useContext(UserContext);
+  const navigate = useNavigate();
+  const formRef = useRef(null);
+  const [loading, setLoading] = useState(false);
+
+  const userAuthThroughServer = async (serverRoute, formData) => {
+    setLoading(true);
+    try {
+      const { data } = await axios.post(import.meta.env.VITE_SERVER + serverRoute, formData);
+
+      storeInSession("user", JSON.stringify(data));
+
+      setUserAuth((prevAuth) => ({
+        ...prevAuth,
+        ...data,
+        token: data.token,
+      }));
+
+      toast.success(type === "signup" ? "Signed up successfully!" : "Logged in successfully!");
+      navigate(data.newUser || type === "signup" ? "/profile-setup" : "/", {
+        state: {
+          from: "google-auth",
+          newUser: data.newUser,
+        },
+      });
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Authentication failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleUserAuth = (e) => {
+    e.preventDefault();
+
+    const serverRoute = type === "login" ? "/auth/login" : "/auth/signup";
+    const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/; // Email validation regex
+    const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,20}$/; // Password validation regex
+
+    const form = new FormData(formRef.current);
+    const formData = Object.fromEntries(form.entries());
+
+    const { name, email, password } = formData;
+
+    if (type === "signup") {
+      if (!name || name.length < 3) {
+        return toast.error("Name must be more than 3 characters");
+      }
+
+      if (!email || !emailRegex.test(email)) {
+        return toast.error("Enter a valid email");
+      }
+    } else {
+      if (!formData.loginmethod) {
+        return toast.error("Enter Username, Email, or Phone");
+      }
+
+      if (emailRegex.test(formData.loginmethod)) {
+        formData.email = formData.loginmethod;
+      } else {
+        formData.username = formData.loginmethod;
+      }
+
+      delete formData.loginmethod;
+    }
+
+    if (!passwordRegex.test(password)) {
+      return toast.error(
+        "Your password must be 6-20 characters including a lowercase letter, an uppercase letter, and a number"
+      );
+    }
+
+    userAuthThroughServer(serverRoute, formData);
+  };
+
+  const handleGoogleAuth = async (e) => {
+    e.preventDefault();
+
+    try {
+      const user = await authWithGoogle();
+      const serverRoute = "/auth/googleLogin";
+      const formData = { token: user.accessToken };
+      await userAuthThroughServer(serverRoute, formData);
+    } catch (error) {
+      toast.error(error?.response?.data?.error || "Something went wrong");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (token && type === "login") {
+    return <Navigate to="/" />;
+  }
+
+  return (
+    <section className="w-full h-screen flex justify-center items-center bg-neutral-950 relative">
+      <Toaster />
+      <form
+        ref={formRef}
+        className="w-[80%] max-w-[400px] flex flex-col items-center"
+      >
+        <img
+          src="../images/logo.png"
+          alt="Gossips Logo"
+          className="w-20 h-20 mb-4 mx-auto"
+        />
+        <h1 className="text-white font-bold mb-4">
+          {type === "login"
+            ? "Log in with your Gossips account"
+            : "Create your Gossips account"}
+        </h1>
+
+        {type === "signup" ? (
+          <>
+            <InputBox name="name" type="text" placeholder="Full Name" />
+            <InputBox name="email" type="email" placeholder="Email" />
+          </>
+        ) : (
+          <InputBox
+            name="loginmethod"
+            type="text"
+            placeholder="Username, Phone or Email"
+          />
+        )}
+        <InputBox name="password" type="password" placeholder="Password" />
+
+        <button
+          type="submit"
+          className="w-[100%] rounded-xl p-4 text-black font-medium bg-white border border-transparent cursor-pointer flex items-center justify-center gap-2"
+          onClick={handleUserAuth}
+          disabled={loading}
+        >
+          {loading ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              {type === "login" ? "Logging in..." : "Signing up..."}
+            </>
+          ) : type === "login" ? (
+            "Log in"
+          ) : (
+            "Sign up"
+          )}
+        </button>
+
+        {type === "login" && (
+          <Link to="/login">
+            <p className="text-neutral-500 text-center pt-4">Forgot password?</p>
+          </Link>
+        )}
+
+        <Link
+          to={type === "login" ? "/signup" : "/login"}
+          className="pt-4 text-white"
+        >
+          {type === "login"
+            ? "Don't have an account? Sign up"
+            : "Have an account? Log in"}
+        </Link>
+
+        <div className="w-[80%] flex items-center justify-center my-4">
+          <hr className="w-[80%] border-neutral-500 my-4" />
+          <p className="text-neutral-500 text-center px-2">or</p>
+          <hr className="w-[80%] border-neutral-500 my-4" />
+        </div>
+
+        <button
+          type="submit"
+          className="w-[100%] rounded-xl p-4 text-white font-medium bg-neutral-950 border border-neutral-800 cursor-pointer flex items-center justify-center gap-2"
+          onClick={handleGoogleAuth}
+          disabled={loading}
+        >
+          <img
+            src="../images/google.svg"
+            alt="Google Logo"
+            className="w-6 h-6"
+          />
+          Continue with Google
+        </button>
+      </form>
+
+      <div className="flex flex-wrap text-nowrap gap-4 absolute bottom-4 text-neutral-500 text-sm mx-6 items-center justify-center">
+        <p>© 2025</p>
+        <p>Gossips Terms</p>
+        <p>Privacy Policy</p>
+        <p>Cookies Policy</p>
+        <p>Report a problem</p>
+      </div>
+
+      <div className="absolute bottom-10 right-10 hidden md:block">
+        <p className="text-neutral-500 text-sm text-center pb-2">
+          Scan to get the app
+        </p>
+        <img
+          src="../images/qrcode.svg"
+          alt="QR Code"
+          className="w-30 h-30 lg:w-45 lg:h-45 bg-neutral-900 p-2 rounded-2xl border border-neutral-700"
+        />
+      </div>
+    </section>
+  );
+};
+
+export default UserAuthForm;
