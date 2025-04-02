@@ -17,12 +17,11 @@ app.use(cors());
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:5173",
+    origin: process.env.CLIENT_URL",
     methods: ["GET", "POST"]
   }
 });
 
-// Store connected users
 const connectedUsers = new Map();
 
 io.on('connection', (socket) => {
@@ -58,7 +57,6 @@ app.get('/', (req, res) => {
   res.send('Server is running');
 });
 
-// Use server.listen instead of app.listen
 server.listen(5000, '192.168.153.133', () => {
   console.log('Server running on port 5000 at 192.168.153.133');
 });
