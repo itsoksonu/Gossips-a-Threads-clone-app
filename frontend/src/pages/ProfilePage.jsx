@@ -500,7 +500,7 @@ const ProfilePage = () => {
             ref={index === reposts.length - 1 ? lastRepostRef : null}
             className="border-b border-neutral-800"
           >
-            <div className="flex items-center gap-2 text-neutral-400 text-sm mb-2 pl-7.5">
+            <div className="flex items-center gap-2 text-neutral-400 text-sm mb-2 pl-6">
               <Icons.repost className="w-4 h-4" />
               <span>
                 <Link
