@@ -7,14 +7,9 @@ cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
-  secure: true, // Ensures HTTPS URLs
+  secure: true, 
 });
 
-/**
- * Upload file to Cloudinary
- * @param {string} filePath - Path to the temporary file
- * @returns {Promise} - Cloudinary upload result
- */
 export const uploadToCloudinary = (filePath) => {
   return new Promise((resolve, reject) => {
     cloudinary.uploader.upload(
@@ -24,7 +19,6 @@ export const uploadToCloudinary = (filePath) => {
         folder: "posts",
       },
       (error, result) => {
-        // Remove the temporary file
         fs.unlink(filePath, (unlinkErr) => {
           if (unlinkErr) console.error("Error removing temp file:", unlinkErr);
         });
