@@ -10,7 +10,7 @@ import FollowButton from "../components/FollowButton";
 
 const ActivityPage = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const { userAuth } = useContext(UserContext);
+  const { userAuth, setUnreadNotificationCount } = useContext(UserContext);
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
@@ -29,7 +29,13 @@ const ActivityPage = () => {
             headers: { Authorization: `Bearer ${userAuth.token}` },
           }
         );
-        setNotifications(response.data.notifications || []);
+        const fetchedNotifications = response.data.notifications || [];
+        setNotifications(fetchedNotifications);
+
+        const unreadCount = fetchedNotifications.filter(
+          (n) => !n.isRead
+        ).length;
+        setUnreadNotificationCount(unreadCount);
       } catch (error) {
         console.error("Error fetching notifications:", error);
       } finally {
@@ -40,7 +46,32 @@ const ActivityPage = () => {
     if (userAuth) {
       fetchNotifications();
     }
-  }, [userAuth]);
+  }, [userAuth, setUnreadNotificationCount]);
+
+  useEffect(() => {
+    const markAllAsRead = async () => {
+      try {
+        const unreadNotifications = notifications.filter((n) => !n.isRead);
+        if (unreadNotifications.length > 0) {
+          await axios.put(
+            `${import.meta.env.VITE_SERVER}/notification/mark-all-read`,
+            {},
+            { headers: { Authorization: `Bearer ${userAuth.token}` } }
+          );
+          setNotifications((prev) =>
+            prev.map((n) => ({ ...n, isRead: true }))
+          );
+          setUnreadNotificationCount(0); 
+        }
+      } catch (error) {
+        console.error("Error marking notifications as read:", error);
+      }
+    };
+
+    if (notifications.length > 0) {
+      markAllAsRead();
+    }
+  }, [notifications, userAuth, setUnreadNotificationCount]);
 
   const handleFollowRequestButton = (e) => {
     e.preventDefault();
