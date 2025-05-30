@@ -39,11 +39,10 @@ export const setupProfile = async (req, res) => {
       return res.status(400).json({ error: "No valid fields to update" });
     }
 
-    // Handle switch from private to public
-    const parsedIsPrivate = isPrivate === 'true' || isPrivate === true; // Handle string or boolean
+    const parsedIsPrivate = isPrivate === 'true' || isPrivate === true;
     if (isPrivate !== undefined && !parsedIsPrivate) {
       const user = await User.findById(req.user);
-      if (user.isPrivate) { // User was private before
+      if (user.isPrivate) {
         const pendingRequests = await FollowRequest.find({
           to: req.user,
           status: "pending",
@@ -68,7 +67,6 @@ export const setupProfile = async (req, res) => {
             status: "pending",
           });
 
-          // Emit WebSocket event to all affected users
           followerIds.forEach(followerId => {
             const socketId = connectedUsers.get(followerId.toString());
             if (socketId) {
@@ -226,7 +224,6 @@ export const followUser = async (req, res) => {
   }
 };
 
-// Controller to handle follow requests
 export const getFollowRequests = async (req, res) => {
   try {
     const followRequests = await FollowRequest.find({
@@ -241,7 +238,6 @@ export const getFollowRequests = async (req, res) => {
   }
 };
 
-// Accept a follow request
 export const acceptFollowRequest = async (req, res) => {
   try {
     const requestId = req.params.requestId;
@@ -264,7 +260,6 @@ export const acceptFollowRequest = async (req, res) => {
         .json({ message: `Request already ${followRequest.status}` });
     }
 
-    // Update the follower and following arrays
     await User.findByIdAndUpdate(
       req.user._id,
       { $push: { followers: followRequest.from } },
@@ -277,7 +272,6 @@ export const acceptFollowRequest = async (req, res) => {
       { new: true }
     );
 
-    // Delete the follow request instead of marking it as accepted
     await FollowRequest.findByIdAndDelete(requestId);
 
     res.status(200).json({ message: "Follow request accepted" });
@@ -287,7 +281,6 @@ export const acceptFollowRequest = async (req, res) => {
   }
 };
 
-// Reject a follow request
 export const rejectFollowRequest = async (req, res) => {
   try {
     const requestId = req.params.requestId;
@@ -310,7 +303,6 @@ export const rejectFollowRequest = async (req, res) => {
         .json({ message: `Request already ${followRequest.status}` });
     }
 
-    // Delete the request instead of marking it as rejected
     await FollowRequest.findByIdAndDelete(requestId);
 
     res.status(200).json({ message: "Follow request rejected" });
@@ -320,7 +312,6 @@ export const rejectFollowRequest = async (req, res) => {
   }
 };
 
-// Cancel a follow request that you sent
 export const cancelFollowRequest = async (req, res) => {
   try {
     const userToFollow = await User.findOne({ username: req.params.username });
@@ -355,7 +346,6 @@ export const cancelFollowRequest = async (req, res) => {
   }
 };
 
-// Update the unfollow function to check if the user is private
 export const unfollowUser = async (req, res) => {
   try {
     const userToUnfollow = await User.findOne({ username: req.params.username });
@@ -415,7 +405,6 @@ export const unfollowUser = async (req, res) => {
   }
 };
 
-// Get whether current user has a pending follow request to a specific user
 export const checkPendingRequestStatus = async (req, res) => {
   try {
     const userToCheck = await User.findOne({ username: req.params.username });
@@ -471,23 +460,23 @@ export const getReplies = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip((pageNumber - 1) * limitNumber)
       .limit(limitNumber)
-      .populate("author", "username profilePic") // Populate the reply's author
+      .populate("author", "username profilePic bio name isverified isPrivate followers")
       .populate({
         path: "parent",
         select: "content media createdAt",
         populate: {
           path: "author",
-          select: "username profilePic",
+          select: "username profilePic name bio isverified isPrivate followers",
         },
-      }) // Populate the parent comment, its media, and its author
+      })
       .populate({
         path: "post",
         select: "content media createdAt",
         populate: {
           path: "author",
-          select: "username profilePic",
+          select: "username profilePic name bio isverified isPrivate followers",
         },
-      }); // Populate the post, its media, and its author
+      });
 
     const totalReplies = await Comment.countDocuments({
       author: user._id,
@@ -531,7 +520,7 @@ export const getReposts = async (req, res) => {
     })
       .populate({
         path: "author",
-        select: "username name profilePic",
+        select: "username name bio profilePic isverified isPrivate followers",
       })
       .populate({
         path: "likes.user",
@@ -544,7 +533,7 @@ export const getReposts = async (req, res) => {
       .populate({
         path: "quotedPost",
         populate: [
-          { path: "author", select: "username profilePic" },
+          { path: "author", select: "username name bio profilePic isverified isPrivate followers" },
           { path: "likes.user", select: "username profilePic" },
           { path: "reposts.user", select: "username profilePic" },
         ],
@@ -572,7 +561,7 @@ export const getReposts = async (req, res) => {
     })
       .populate({
         path: "author",
-        select: "username name profilePic",
+        select: "username name bio profilePic isverified isPrivate followers",
       })
       .populate({
         path: "likes.user",
@@ -635,15 +624,13 @@ export const getReposts = async (req, res) => {
 export const isFollowingMe = async (req, res) => {
   try {
     const { username } = req.params;
-    const currentUserId = req.user._id; // From authenticated user
+    const currentUserId = req.user._id;
 
-    // Find the user by username
     const targetUser = await User.findOne({ username });
     if (!targetUser) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Find the current user and check if targetUser is in their followers
     const currentUser = await User.findById(currentUserId);
     const isFollowingMe = currentUser.followers.some(follower => 
       follower.toString() === targetUser._id.toString()
@@ -653,5 +640,95 @@ export const isFollowingMe = async (req, res) => {
   } catch (error) {
     console.error('Error checking if user is following me:', error);
     res.status(500).json({ error: 'Server error', details: error.message });
+  }
+};
+
+export const restrictUser = async (req, res) => {
+  try {
+    const userToRestrict = await User.findOne({ username: req.params.username });
+    if (!userToRestrict) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const currentUser = await User.findById(req.user._id);
+    if (!currentUser.restricted) currentUser.restricted = [];
+
+    if (currentUser.restricted.includes(userToRestrict._id)) {
+      return res.status(400).json({ message: "User already restricted" });
+    }
+
+    currentUser.restricted.push(userToRestrict._id);
+    await currentUser.save();
+
+    res.status(200).json({ message: "User restricted successfully" });
+  } catch (error) {
+    console.error("Error restricting user:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export const blockUser = async (req, res) => {
+  try {
+    const userToBlock = await User.findOne({ username: req.params.username });
+    if (!userToBlock) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const currentUser = await User.findById(req.user._id);
+    if (!currentUser.blocked) currentUser.blocked = [];
+
+    if (currentUser.blocked.includes(userToBlock._id)) {
+      return res.status(400).json({ message: "User already blocked" });
+    }
+
+    currentUser.blocked.push(userToBlock._id);
+    await currentUser.save();
+
+    await User.findByIdAndUpdate(
+      req.user._id,
+      { $pull: { following: userToBlock._id, followers: userToBlock._id } },
+      { new: true }
+    );
+
+    await User.findByIdAndUpdate(
+      userToBlock._id,
+      { $pull: { following: req.user._id, followers: req.user._id } },
+      { new: true }
+    );
+
+    await FollowRequest.deleteMany({
+      $or: [
+        { from: req.user._id, to: userToBlock._id },
+        { from: userToBlock._id, to: req.user._id },
+      ],
+    });
+
+    res.status(200).json({ message: "User blocked successfully" });
+  } catch (error) {
+    console.error("Error blocking user:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export const reportUser = async (req, res) => {
+  try {
+    const userToReport = await User.findOne({ username: req.params.username });
+    if (!userToReport) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const notification = new Notification({
+      user: userToReport._id,
+      sender: req.user._id,
+      type: "report",
+      createdAt: new Date(),
+      isRead: false,
+    });
+    await notification.save();
+
+    res.status(200).json({ message: "User reported successfully" });
+  } catch (error) {
+    console.error("Error reporting user:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
 };
