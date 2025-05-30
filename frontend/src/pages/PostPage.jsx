@@ -96,14 +96,29 @@ const PostPage = () => {
     <div className="w-full bg-neutral-950">
       <SiteHeader layoutContext={{ openCreateModal, closeCreateModal }} />
       <main className="container max-w-[620px] px-4 sm:px-6 bg-neutral-950 mx-auto mt-2 pb-16">
-        {loading ? (
-          <p className="text-white text-center mb-4">Loading...</p>
-        ) : error ? (
+        {loading && !post && !error && (
+          <div className="animate-pulse space-y-4">
+            <div className="flex items-center space-x-4">
+              <div className="h-10 w-10 rounded-full bg-neutral-700"></div>
+              <div className="flex-1 space-y-2">
+                <div className="h-4 bg-neutral-700 rounded w-3/4"></div>
+                <div className="h-3 bg-neutral-700 rounded w-1/2"></div>
+              </div>
+            </div>
+            <div className="h-4 bg-neutral-700 rounded w-full"></div>
+            <div className="flex space-x-4 mb-4">
+              <div className="h-4 bg-neutral-700 rounded w-1/8"></div>
+              <div className="h-4 bg-neutral-700 rounded w-1/8"></div>
+              <div className="h-4 bg-neutral-700 rounded w-1/8"></div>
+            </div>
+          </div>
+        )}
+        {error ? (
           <p className="text-red-500 text-center">{error}</p>
         ) : post ? (
           <PostCard item={post} author={post.author} />
         ) : (
-          <p className="text-gray-400 text-center">No post found.</p>
+          ""
         )}
 
         <div className="flex flex-row items-center justify-between py-4 border-y border-neutral-800">
