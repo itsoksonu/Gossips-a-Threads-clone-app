@@ -49,7 +49,6 @@ const SavedPostsPage = () => {
         const newPosts = response.data.posts.filter(
           (post) => !postIds.current.has(post._id)
         );
-
         newPosts.forEach((post) => postIds.current.add(post._id));
         setSavedPosts((prevPosts) => [...prevPosts, ...newPosts]);
         setHasMore(response.data.pagination?.hasNextPage ?? false);
@@ -66,7 +65,6 @@ const SavedPostsPage = () => {
     [userAuth, navigate]
   );
 
-  // Initial fetch and reset on user change
   useEffect(() => {
     if (!userAuth?.token) return;
     postIds.current.clear();
@@ -76,7 +74,6 @@ const SavedPostsPage = () => {
     fetchSavedPosts(1);
   }, [userAuth]);
 
-  // Fetch subsequent pages
   useEffect(() => {
     if (page > 1) {
       fetchSavedPosts(page);
@@ -119,7 +116,7 @@ const SavedPostsPage = () => {
     <div className="w-full bg-neutral-950">
       <SiteHeader layoutContext={layoutContext} />
       <main className="container max-w-[620px] px-4 sm:px-6 bg-neutral-950 mx-auto pb-16">
-        <p className="flex justify-center items-center mt-2 mb-4 font-medium  ">
+        <p className="flex justify-center items-center mt-2 mb-4 font-medium ">
           <span>Saved Posts </span>
           <span className="bg-neutral-800 rounded-full p-1 ml-2 mt-0.5">
             <Icons.chevronbottom />
@@ -144,6 +141,8 @@ const SavedPostsPage = () => {
                     author={post.author}
                     onUpdate={handleUpdatePost}
                     onDelete={handleDeletePost}
+                    postId={post._id}
+                    removeOnUnsave={true}
                   />
                 </div>
               );
