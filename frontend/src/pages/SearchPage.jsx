@@ -133,7 +133,6 @@ const SearchPage = () => {
     );
   };
 
-  // Filter out the authenticated user for the "Follow suggestions" section
   const suggestedUsers = users.filter(
     (user) => user.username !== userAuth.username
   );
