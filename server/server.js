@@ -1,49 +1,26 @@
+import "./config/config.js";
 import express from "express";
-import dotenv from "dotenv";
 import mongoose from "mongoose";
 import authRoutes from "./routes/authRoutes.js";
 import userRoutes from "./routes/userRoutes.js";
 import postRoutes from "./routes/postRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
-import notificationRoutes from "./routes/notificationRoutes.js"
+import notificationRoutes from "./routes/notificationRoutes.js";
+import messageRoutes from "./routes/messageRoutes.js";
 import cors from "cors";
-import { createServer } from 'http';
-import { Server } from 'socket.io';
+import { createServer } from "http";
+import setupSocket from "./config/socket.js"; 
 
-dotenv.config();
 const app = express();
-app.use(express.json()); 
+app.use(express.json());
 app.use(cors());
 const server = createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: process.env.CLIENT_URL",
-    methods: ["GET", "POST"]
-  }
-});
 
-const connectedUsers = new Map();
-
-io.on('connection', (socket) => {
-
-  socket.on('join', (userId) => {
-    connectedUsers.set(userId, socket.id);
-    socket.join(userId);
-  });
-
-  socket.on('disconnect', () => {
-    for (let [userId, socketId] of connectedUsers) {
-      if (socketId === socket.id) {
-        connectedUsers.delete(userId);
-        break;
-      }
-    }
-  });
-});
-
+const { io, connectedUsers } = setupSocket(server);
 export { io, connectedUsers };
 
-mongoose.connect(process.env.MONGO_URI)
+mongoose
+  .connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB Connected"))
   .catch((err) => console.error("MongoDB Error:", err));
 
@@ -52,11 +29,13 @@ app.use("/user", userRoutes);
 app.use("/posts", postRoutes);
 app.use("/reply", commentRoutes);
 app.use("/notification", notificationRoutes);
+app.use("/chats", messageRoutes);
 
-app.get('/', (req, res) => {
-  res.send('Server is running');
+app.get("/", (req, res) => {
+  res.send("Server is running");
 });
 
-server.listen(5000, '192.168.153.133', () => {
-  console.log('Server running on port 5000 at 192.168.153.133');
+server.listen(5000, () => {
+  console.log("Server running on port 5000 at 192.168.234.133");
 });
+
