@@ -3,16 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { Icons } from "./icons";
 import FollowButton from "./FollowButton";
 import { UserContext } from "../contexts/UserContext";
-import { useFollow } from "../contexts/FollowContext.jsx";
 
 const SearchUserCard = ({ user }) => {
   let { profilePic, bio, name, followers, username, isVerified, isPrivate } = user;
   const navigate = useNavigate();
   const { userAuth } = useContext(UserContext);
-  // eslint-disable-next-line no-unused-vars
-  const { handleFollowUpdate } = useFollow();
   
-  // Normalize the following data to ensure consistent format
   const following = Array.isArray(userAuth.following)
     ? userAuth.following.map((follow) => 
         typeof follow === 'object' ? follow.username : follow
@@ -23,10 +19,7 @@ const SearchUserCard = ({ user }) => {
     navigate(`/${username}`);
   };
   
-  const handleFollowChange = () => {
-    // If needed, refresh the card data or update UI
-  };
-  
+
   return (
     <div
       className="text-white w-full border-b border-neutral-800 px-3 pb-4 cursor-pointer"
@@ -59,7 +52,6 @@ const SearchUserCard = ({ user }) => {
                 username={username}
                 currentUserFollowing={following}
                 isPrivate={isPrivate}
-                onFollowStatusChange={handleFollowChange}
               />
             </div>
           </div>
