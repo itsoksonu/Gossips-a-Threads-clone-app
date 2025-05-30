@@ -21,7 +21,15 @@ export default function NavigationMenu() {
   };
 
   const handleSavedPosts = () => {
-    navigate("/saved")
+    navigate("/saved");
+  };
+
+  const handleLikedPosts = () => {
+    navigate("/liked");
+  };
+
+  const handleSettings = () => {
+    navigate("/settings");
   };
 
   return (
@@ -43,35 +51,53 @@ export default function NavigationMenu() {
           align="end"
           className="shadow-xl bg-[#181818] z-[999] rounded-2xl w-[220px] mt-1 p-0 border border-neutral-700"
         >
-          <DropdownMenuItem className="p-3 mx-2 tracking-normal select-none font-semibold mt-2 cursor-pointer text-[15px] active:bg-neutral-950  text-white hover:bg-neutral-800 focus:rounded-xl outline-none">
-            Switch appearance
+          <DropdownMenuItem className="flex justify-between items-center p-3 mx-2 tracking-normal select-none font-semibold mt-2 cursor-pointer text-[15px] active:bg-neutral-950  text-white hover:bg-neutral-800 focus:rounded-xl outline-none">
+            <span>Switch appearance</span>
+            <Icons.dark />
           </DropdownMenuItem>
 
-          <DropdownMenuItem className="p-3 mx-2 tracking-normal select-none font-semibold cursor-pointer text-[15px] active:bg-neutral-950  text-white hover:bg-neutral-800 focus:rounded-xl outline-none">
-          <button
-              aria-label=" Saved posts"
-              onClick={handleSavedPosts}
-            >
-               Saved posts
-            </button>
+          <DropdownMenuItem
+            className="flex justify-between items-center p-3 mx-2 tracking-normal select-none font-semibold cursor-pointer text-[15px] active:bg-neutral-950  text-white hover:bg-neutral-800 focus:rounded-xl outline-none"
+            onClick={handleSavedPosts}
+          >
+            <span>Saved</span>
+            <Icons.save />
           </DropdownMenuItem>
 
-          <DropdownMenuItem className="p-3 mx-2 tracking-normal select-none font-semibold cursor-pointer text-[15px] active:bg-neutral-950  text-white hover:bg-neutral-800 hover:rounded-xl outline-none">
-            About
+          <DropdownMenuItem
+            className="flex justify-between items-center p-3 mx-2 tracking-normal select-none font-semibold cursor-pointer text-[15px] active:bg-neutral-950  text-white hover:bg-neutral-800 focus:rounded-xl outline-none"
+            onClick={handleLikedPosts}
+          >
+            <span>Liked</span>
+            <Icons.like className="w-5 h-5 " />
           </DropdownMenuItem>
 
-          <DropdownMenuItem className="p-3 mx-2 tracking-normal select-none font-semibold mb-2 cursor-pointer text-[15px] active:bg-neutral-950  text-white hover:bg-neutral-800 hover:rounded-xl outline-none">
-            Report a problem
+          <DropdownMenuItem
+            className="flex justify-between items-center p-3 mx-2 tracking-normal select-none font-semibold cursor-pointer text-[15px] active:bg-neutral-950  text-white hover:bg-neutral-800 focus:rounded-xl outline-none"
+            onClick={handleSettings}
+          >
+            <span>Settings</span>
+            <Icons.settings />
           </DropdownMenuItem>
+
+          <DropdownMenuItem className="flex justify-between items-center p-3 mx-2 mb-2 tracking-normal select-none font-semibold cursor-pointer text-[15px] active:bg-neutral-950  text-white hover:bg-neutral-800 hover:rounded-xl outline-none">
+            <span>About</span>
+            <Icons.about />
+          </DropdownMenuItem>
+
           <DropdownMenuSeparator className="h-[1.4px] my-0" />
-          <DropdownMenuItem className="p-3 mx-2 tracking-normal select-none font-semibold my-2 cursor-pointer text-[15px] active:bg-neutral-950  hover:bg-neutral-800 hover:rounded-xl outline-none text-red-500">
-            <button
-              aria-label="Log out"
-              className="cursor-pointer"
-              onClick={handleLogOut}
-            >
-              Log out
-            </button>
+
+          <DropdownMenuItem className="flex justify-between items-center p-3 mx-2 mt-2 tracking-normal select-none font-semibold cursor-pointer text-[15px] active:bg-neutral-950   hover:bg-neutral-800 hover:rounded-xl outline-none">
+            <span>Report a problem</span>
+            <Icons.report />
+          </DropdownMenuItem>
+
+          <DropdownMenuItem
+            className="flex justify-between items-center p-3 mx-2 tracking-normal select-none font-semibold mb-2 cursor-pointer text-[15px] active:bg-neutral-950  hover:bg-neutral-800 hover:rounded-xl outline-none text-red-500"
+            onClick={handleLogOut}
+          >
+            <span>Log out</span>
+            <Icons.logout />
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
