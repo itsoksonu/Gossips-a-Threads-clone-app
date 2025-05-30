@@ -140,10 +140,10 @@ const FollowButton = ({ username, currentUserFollowing, isPrivate, onFollowStatu
     ? 'Follow Back'
     : 'Follow';
 
-  const buttonClasses = `follow-button ${
-    isFollowing ? 'following text-neutral-500 font-medium' : 
+  const buttonClasses = `follow-button text-sm ${
+    isFollowing ? 'following text-sm text-neutral-500 font-medium' : 
     isPending ? 'pending' : 
-    canFollowBack ? 'follow-back' : ''
+    canFollowBack ? 'follow-back text-sm' : ''
   } cursor-pointer disabled:opacity-50`;
 
   return (
