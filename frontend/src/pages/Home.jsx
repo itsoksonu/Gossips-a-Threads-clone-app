@@ -6,6 +6,7 @@ import { UserContext } from "../contexts/UserContext";
 import PostCard from "../components/PostCard";
 import axios from "axios";
 import { Icons } from "../components/icons";
+import StarOnGithubCard from "../components/StarOnGithubCard";
 
 export default function PagesLayout() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -16,20 +17,68 @@ export default function PagesLayout() {
   const [hasMore, setHasMore] = useState(true);
   const [loading, setLoading] = useState(false);
   const [feedType, setFeedType] = useState("all");
+  const [isRefetching, setIsRefetching] = useState(false);
   const observer = useRef();
   const postIds = useRef(new Set());
   const [followingUsers, setFollowingUsers] = useState(new Set());
+  const shouldFetch = useRef(false);
 
   const openCreateModal = () => setIsCreateModalOpen(true);
   const closeCreateModal = () => setIsCreateModalOpen(false);
-  const layoutContext = { openCreateModal, closeCreateModal };
+
+  const refetchPosts = async () => {
+    if (!token) return;
+    setIsRefetching(true);
+    try {
+      const response = await axios.get(
+        `${import.meta.env.VITE_SERVER}/posts/feed`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          params: {
+            page: 1,
+            limit: 10,
+            type: feedType === "following" ? "following" : undefined,
+          },
+        }
+      );
+
+      const filteredPosts = response.data.posts.filter((post) => {
+        if (!post?.author?._id) return false;
+        if (post.author._id === currentUserId) return true;
+        if (!post.author.isPrivate) return true;
+        return followingUsers.has(post.author._id);
+      });
+
+      postIds.current.clear();
+
+      const newPosts = filteredPosts;
+      newPosts.forEach((post) => postIds.current.add(post._id));
+
+      setPosts(newPosts.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      ));
+      
+      setPage(2);
+      setHasMore(response.data.pagination?.hasNextPage ?? false);
+      shouldFetch.current = false;
+    } catch (error) {
+      console.error("Error refetching posts:", error);
+    } finally {
+      setIsRefetching(false);
+    }
+  };
+
+  const layoutContext = { openCreateModal, closeCreateModal, refetchPosts };
 
   const switchFeedType = (type) => {
+    if (type === feedType) return;
+    
     setPosts([]);
     setPage(1);
     setHasMore(true);
     postIds.current.clear();
     setFeedType(type);
+    shouldFetch.current = true;
   };
 
   useEffect(() => {
@@ -37,13 +86,19 @@ export default function PagesLayout() {
 
     const fetchFollowingList = async () => {
       try {
-        const response = await axios.get(`${import.meta.env.VITE_SERVER}/user/following`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        const following = new Set(response.data.map(user => user._id));
+        const response = await axios.get(
+          `${import.meta.env.VITE_SERVER}/user/following`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
+        const following = new Set(response.data.map((user) => user._id));
         setFollowingUsers(following);
       } catch (error) {
-        console.error("Error fetching following list:", error.response?.data || error.message);
+        console.error(
+          "Error fetching following list:",
+          error.response?.data || error.message
+        );
         if (error.response?.status === 404) {
           setUserAuth({});
         }
@@ -54,35 +109,51 @@ export default function PagesLayout() {
   }, [token, setUserAuth]);
 
   useEffect(() => {
-    if (!token || loading || !hasMore) return;
+    if (!token) return;
+    
+    shouldFetch.current = true;
+    refetchPosts();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [token, feedType]);
+
+  useEffect(() => {
+    if (!token || loading || !hasMore || isRefetching || !shouldFetch.current || page === 1) return;
 
     const fetchPosts = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`${import.meta.env.VITE_SERVER}/posts/feed`, {
-          headers: { Authorization: `Bearer ${token}` },
-          params: {
-            page,
-            limit: 10,
-            type: feedType === "following" ? "following" : undefined,
-          },
-        });
+        const response = await axios.get(
+          `${import.meta.env.VITE_SERVER}/posts/feed`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            params: {
+              page,
+              limit: 10,
+              type: feedType === "following" ? "following" : undefined,
+            },
+          }
+        );
 
-        const filteredPosts = response.data.posts.filter(post => {
-          if (!post?.author?._id) return false; // Skip invalid posts
+        const filteredPosts = response.data.posts.filter((post) => {
+          if (!post?.author?._id) return false;
           if (post.author._id === currentUserId) return true;
           if (!post.author.isPrivate) return true;
           return followingUsers.has(post.author._id);
         });
 
-        const newPosts = filteredPosts.filter(post => !postIds.current.has(post._id));
-        newPosts.forEach(post => postIds.current.add(post._id));
+        const newPosts = filteredPosts.filter(
+          (post) => !postIds.current.has(post._id)
+        );
+        newPosts.forEach((post) => postIds.current.add(post._id));
 
-        setPosts(prevPosts => {
+        setPosts((prevPosts) => {
           const combinedPosts = [...prevPosts, ...newPosts];
-          return combinedPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+          return combinedPosts.sort(
+            (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+          );
         });
         setHasMore(response.data.pagination?.hasNextPage ?? false);
+        shouldFetch.current = false;
       } catch (error) {
         console.error("Error fetching posts:", error);
       } finally {
@@ -91,33 +162,44 @@ export default function PagesLayout() {
     };
 
     fetchPosts();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, page, feedType, followingUsers, currentUserId, hasMore]);
+  }, [
+    token,
+    page,
+    feedType,
+    followingUsers,
+    currentUserId,
+    hasMore,
+    loading,
+    isRefetching,
+  ]);
 
   const handleNewPost = (newPost) => {
     if (!newPost?._id || postIds.current.has(newPost._id)) return;
     postIds.current.add(newPost._id);
-    setPosts(prevPosts => {
+    setPosts((prevPosts) => {
       const updatedPosts = [newPost, ...prevPosts];
-      return updatedPosts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+      return updatedPosts.sort(
+        (a, b) => new Date(b.createdAt) - new Date(a.createdAt)
+      );
     });
     closeCreateModal();
   };
 
   const handleDeletePost = (postId) => {
-    setPosts(prevPosts => prevPosts.filter(p => p._id !== postId));
+    setPosts((prevPosts) => prevPosts.filter((p) => p._id !== postId));
     postIds.current.delete(postId);
   };
 
   const lastPostRef = useCallback(
     (node) => {
-      if (loading) return;
+      if (loading || isRefetching) return;
       if (observer.current) observer.current.disconnect();
 
       observer.current = new IntersectionObserver(
         (entries) => {
-          if (entries[0].isIntersecting && hasMore) {
-            setPage(prevPage => prevPage + 1);
+          if (entries[0].isIntersecting && hasMore && !shouldFetch.current) {
+            shouldFetch.current = true;
+            setPage((prevPage) => prevPage + 1);
           }
         },
         { threshold: 0.5 }
@@ -125,12 +207,11 @@ export default function PagesLayout() {
 
       if (node) observer.current.observe(node);
     },
-    [loading, hasMore]
+    [loading, hasMore, isRefetching]
   );
 
   return (
     <div className="w-full bg-neutral-950">
-      
       <SiteHeader layoutContext={layoutContext} />
       <main className="container max-w-[620px] px-4 sm:px-6 bg-neutral-950 mx-auto pb-16">
         {/* Feed Type Selector */}
@@ -177,24 +258,32 @@ export default function PagesLayout() {
 
         <hr className="border-0.1 border-neutral-700 -mt-2" />
 
-        {/* Render Posts with Infinite Scroll */}
+        {isRefetching && (
+          <div className="flex justify-center py-4">
+            <Icons.spinner className="animate-spin h-7 w-7 text-neutral-400" />
+          </div>
+        )}
+
+        {/* Render Posts */}
         <div className="mt-4 space-y-4">
           {posts.length > 0 ? (
             posts.map((post, index) => {
               const isLastPost = index === posts.length - 1;
               return (
                 <div
-                  key={post._id || index} // Fallback to index if _id is missing
+                  key={post._id || index}
                   ref={isLastPost ? lastPostRef : null}
                   className="border-b border-neutral-800"
                 >
                   <PostCard
-                    item={post} // Changed from 'post' to 'item'
+                    item={post}
                     author={post.author}
                     onDelete={handleDeletePost}
                     onUpdate={(updatedPost) => {
-                      setPosts(prevPosts =>
-                        prevPosts.map(p => (p._id === updatedPost._id ? updatedPost : p))
+                      setPosts((prevPosts) =>
+                        prevPosts.map((p) =>
+                          p._id === updatedPost._id ? updatedPost : p
+                        )
                       );
                     }}
                   />
@@ -203,13 +292,17 @@ export default function PagesLayout() {
             })
           ) : (
             <div className="text-center py-10 text-neutral-400">
-              {loading ? <Icons.spinner className="animate-spin mx-auto" /> : "No posts available yet."}
+              {loading ? (
+                <Icons.spinner className="animate-spin mx-auto" />
+              ) : (
+                ""
+              )}
             </div>
           )}
         </div>
 
-        {/* Loading Indicator */}
-        {loading && posts.length > 0 && (
+        {/* Loading  */}
+        {loading && posts.length > 0 && !isRefetching && (
           <div className="flex justify-center py-4">
             <Icons.spinner className="animate-spin h-8 w-8 text-neutral-400" />
           </div>
@@ -222,6 +315,18 @@ export default function PagesLayout() {
         onClose={closeCreateModal}
         onPostCreated={handleNewPost}
       />
+      <div className="left-34 bottom-18 fixed">
+        <StarOnGithubCard />
+      </div>
+
+      <div className="hidden xl:flex fixed bottom-15 right-8">
+        <button
+          className="border border-neutral-700 bg-neutral-900 px-7 py-5 rounded-xl text-[14px] shadow-lg font-medium tracking-wide hover:scale-105 active:scale-95 cursor-pointer select-none transform transition-all duration-150 ease-out flex items-center justify-center"
+          onClick={() => setIsCreateModalOpen(true)}
+        >
+          <Icons.plus />
+        </button>
+      </div>
     </div>
   );
 }
