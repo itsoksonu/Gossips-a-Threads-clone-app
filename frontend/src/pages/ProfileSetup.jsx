@@ -92,18 +92,6 @@ const ProfileSetup = () => {
   const handleContinue = async () => {
     const { bio, link, isPrivate } = profileData;
 
-    if (
-      !bio.trim() &&
-      !link.trim() &&
-      isPrivate === userAuth?.isPrivate &&
-      !imageFile
-    ) {
-      toast.error(
-        "Please add a bio, link, or change your profile picture to update your profile"
-      );
-      return;
-    }
-
     setProfileData((prev) => ({ ...prev, loading: true }));
 
     try {
@@ -282,18 +270,16 @@ const ProfileSetup = () => {
         </div>
 
         <button
-          className={`w-full rounded-xl p-3 font-medium flex items-center justify-center ${
-            !profileData.bio.trim() && !profileData.link.trim() && !imageFile
-              ? "text-neutral-500 bg-neutral-800 cursor-not-allowed"
-              : "text-black bg-white cursor-pointer hover:bg-neutral-100"
-          }`}
+          className={`w-full rounded-xl p-3 font-medium flex items-center justify-center text-black bg-white cursor-pointer hover:bg-neutral-100"
+          `}
           onClick={handleContinue}
-          disabled={
-            profileData.loading ||
-            (!profileData.bio.trim() && !profileData.link.trim() && !imageFile)
-          }
+          disabled={profileData.loading}
         >
-          {profileData.loading ? <Icons.spinner className="w-4 h-4 " /> : "Update"}
+          {profileData.loading ? (
+            <Icons.spinner className="w-4 h-4 animate-spin" />
+          ) : (
+            "Update"
+          )}
         </button>
       </div>
     </section>
