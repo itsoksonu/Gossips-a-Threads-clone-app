@@ -17,7 +17,6 @@ const PostActions = ({
   isReposted,
   isReposting,
 }) => {
-
   return (
     <div className="flex flex-row justify-start gap-2 items-center">
       <button
