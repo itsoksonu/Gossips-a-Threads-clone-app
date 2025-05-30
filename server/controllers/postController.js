@@ -1,5 +1,3 @@
-// Handles creating, deleting, liking, and reposting posts.
-
 import { uploadToCloudinary } from "../config/cloudinary.js";
 import { StatusCodes } from "http-status-codes";
 import Post from "../models/Post.js";
@@ -9,40 +7,56 @@ import Notification from "../models/Notification.js";
 
 export const createPost = async (req, res) => {
   try {
-    const { content, icon, parentGossip, quotedPost, isQuoteRepost } = req.body;
+    const {
+      content,
+      icon,
+      parentGossip,
+      quotedPost,
+      quotedComment,
+      isQuoteRepost,
+      isQuoteComment,
+      isDraft,
+    } = req.body;
     const userId = req.user.id;
 
-    if (!content || content.trim() === "") {
+    if (isDraft === "true") {
       return res.status(StatusCodes.BAD_REQUEST).json({
         success: false,
-        message: "Post content is required",
+        message: "Use save-draft endpoint for drafts",
       });
     }
 
     const newPost = {
       author: userId,
-      content,
+      content: content || "",
       icon: icon || "",
       parentGossip: parentGossip || null,
       quotedPost: quotedPost || null,
+      quotedComment: quotedComment || null,
       isQuoteRepost: isQuoteRepost || false,
-      views: [], // Initialize views array
+      isQuoteComment: isQuoteComment || false,
+      views: [],
+      isDraft: false,
     };
 
     if (req.files && req.files.length > 0) {
       const mediaUrls = [];
-
       for (const file of req.files) {
         const result = await uploadToCloudinary(file.path);
         mediaUrls.push(result.secure_url);
       }
-
       newPost.media = mediaUrls;
+    }
+
+    if (!content && !newPost.media?.length && !quotedComment && !quotedPost) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        message: "Post must have content, media, or a quote",
+      });
     }
 
     const post = await Post.create(newPost);
 
-    // Create notification for quote posts
     if (isQuoteRepost && quotedPost) {
       const originalPost = await Post.findById(quotedPost);
       if (originalPost && originalPost.author.toString() !== userId) {
@@ -59,13 +73,42 @@ export const createPost = async (req, res) => {
       }
     }
 
+    if (isQuoteComment && quotedComment) {
+      const originalComment = await Comment.findById(quotedComment).lean();
+      if (originalComment && originalComment.author.toString() !== userId) {
+        const notification = new Notification({
+          user: originalComment.author,
+          sender: userId,
+          type: "quote_comment",
+          post: post._id,
+          quotedComment: quotedComment,
+          createdAt: new Date(),
+          isRead: false,
+        });
+        await notification.save();
+      }
+    }
+
+    await User.findByIdAndUpdate(userId, { $push: { posts: post._id } });
+
     const populatedPost = await Post.findById(post._id)
-      .populate("author", "name username profilePic isVerified")
+      .populate(
+        "author",
+        "name username profilePic isVerified isPrivate followers"
+      )
       .populate({
         path: "quotedPost",
         populate: {
           path: "author",
-          select: "name username profilePic isVerified",
+          select: "name username profilePic isVerified isPrivate followers",
+        },
+      })
+      .populate({
+        path: "quotedComment",
+        select: "content media author createdAt post",
+        populate: {
+          path: "author",
+          select: "name username profilePic isVerified isPrivate followers",
         },
       });
 
@@ -84,6 +127,123 @@ export const createPost = async (req, res) => {
   }
 };
 
+export const saveDraft = async (req, res) => {
+  try {
+    const { content, quotedPost, isQuoteRepost } = req.body;
+    const userId = req.user.id;
+
+    const newDraft = {
+      author: userId,
+      content: content || "",
+      quotedPost: quotedPost || null,
+      isQuoteRepost: isQuoteRepost || false,
+      isDraft: true,
+      createdAt: new Date(),
+    };
+
+    if (req.files && req.files.length > 0) {
+      const mediaUrls = [];
+      for (const file of req.files) {
+        const result = await uploadToCloudinary(file.path);
+        mediaUrls.push(result.secure_url);
+      }
+      newDraft.media = mediaUrls;
+    }
+
+    if (!content && !newDraft.media?.length) {
+      return res.status(StatusCodes.BAD_REQUEST).json({
+        success: false,
+        message: "Draft must have content or media",
+      });
+    }
+
+    const draft = await Post.create(newDraft);
+    res.status(StatusCodes.CREATED).json({
+      success: true,
+      message: "Draft saved successfully",
+      draft,
+    });
+  } catch (error) {
+    console.error("Error saving draft:", error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      success: false,
+      message: "Failed to save draft",
+      error: error.message,
+    });
+  }
+};
+
+export const getDrafts = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { page = 1, limit = 10 } = req.query;
+
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+
+    const totalDrafts = await Post.countDocuments({
+      author: userId,
+      isDraft: true,
+    });
+
+    const drafts = await Post.find({ author: userId, isDraft: true })
+      .populate("author", "username name bio profilePic isVerified isPrivate followers")
+      .populate({
+        path: "quotedPost",
+        populate: {
+          path: "author",
+          select: "username name bio profilePic isVerified isPrivate followers",
+        },
+      })
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limitNum)
+      .lean();
+
+    res.status(200).json({
+      drafts,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(totalDrafts / limitNum),
+        totalItems: totalDrafts,
+        itemsPerPage: limitNum,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching drafts:", error);
+    res
+      .status(500)
+      .json({ error: "Failed to fetch drafts", details: error.message });
+  }
+};
+
+export const deleteDraft = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+
+    const draft = await Post.findOne({
+      _id: id,
+      author: userId,
+      isDraft: true,
+    });
+    if (!draft) {
+      return res
+        .status(StatusCodes.NOT_FOUND)
+        .json({ message: "Draft not found" });
+    }
+
+    await Post.findByIdAndDelete(id);
+    res.status(StatusCodes.OK).json({ message: "Draft deleted successfully" });
+  } catch (error) {
+    console.error("Error deleting draft:", error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+      message: "Failed to delete draft",
+      error: error.message,
+    });
+  }
+};
 export const getHomeFeed = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -93,29 +253,39 @@ export const getHomeFeed = async (req, res) => {
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    let query = {};
+    let query = { isDraft: false };
 
     if (type === "following") {
       const user = await User.findById(userId).populate("following");
       const followingIds = user.following.map((user) => user._id);
-      query = { author: { $in: followingIds } };
+      query = { ...query, author: { $in: followingIds } };
     }
 
     const totalPosts = await Post.countDocuments(query);
 
     const posts = await Post.find(query)
-      .populate("author", "username profilePic isVerified isPrivate")
+      .populate("author", "username name bio profilePic isVerified isPrivate followers")
       .populate("replies")
       .populate({
         path: "quotedPost",
-        populate: { path: "author", select: "username profilePic" },
+        populate: {
+          path: "author",
+          select: "username name bio profilePic isVerified isPrivate followers",
+        },
+      })
+      .populate({
+        path: "quotedComment",
+        select: "content media author createdAt post",
+        populate: {
+          path: "author",
+          select: "name username bio profilePic isVerified isPrivate followers",
+        },
       })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum)
       .lean();
 
-    // Add viewCount to each post with fallback for undefined views
     const postsWithViewCount = posts.map((post) => ({
       ...post,
       viewCount: Array.isArray(post.views) ? post.views.length : 0,
@@ -155,23 +325,33 @@ export const getUserPosts = async (req, res) => {
       return res.status(404).json({ error: "User not found" });
     }
 
-    const query = { author: user._id };
+    const query = { author: user._id, isDraft: false };
 
     const totalPosts = await Post.countDocuments(query);
 
     const posts = await Post.find(query)
-      .populate("author", "username profilePic isVerified isPrivate")
+      .populate("author", "username name bio profilePic isVerified isPrivate followers")
       .populate("replies")
       .populate({
         path: "quotedPost",
-        populate: { path: "author", select: "username profilePic" },
+        populate: {
+          path: "author",
+          select: "username name bio profilePic isVerified isPrivate followers",
+        },
+      })
+      .populate({
+        path: "quotedComment",
+        select: "content media author createdAt post",
+        populate: {
+          path: "author",
+          select: "name username bio profilePic isVerified isPrivate followers",
+        },
       })
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limitNum)
       .lean();
 
-    // Add viewCount to each post
     const postsWithViewCount = posts.map((post) => ({
       ...post,
       viewCount: post.views.length,
@@ -222,24 +402,29 @@ export const likePost = async (req, res) => {
     }
     await post.save();
 
-    if (!alreadyLiked) {
+    if (!alreadyLiked && post.author.toString() !== userId.toString()) {
       const notification = new Notification({
         user: post.author,
         sender: userId,
         type: "like",
-        post: postId,  
+        post: postId,
         createdAt: new Date(),
         isRead: false,
       });
       await notification.save();
     }
 
-    // Populate the updated post
     const updatedPost = await Post.findById(postId)
-      .populate("author", "name username profilePic isVerified")
+      .populate(
+        "author",
+        "name username profilePic isVerified isPrivate followers"
+      )
       .populate({
         path: "quotedPost",
-        populate: { path: "author", select: "username profilePic" },
+        populate: {
+          path: "author",
+          select: "username profilePic isVerified isPrivate followers",
+        },
       });
 
     res.status(200).json({
@@ -264,17 +449,30 @@ export const getPost = async (req, res) => {
     const userId = req.user?.id;
 
     const post = await Post.findById(postId)
-      .populate("author", "name username profilePic isVerified isPrivate")
+      .populate(
+        "author",
+        "name username bio profilePic isVerified isPrivate followers"
+      )
       .populate({
         path: "quotedPost",
-        populate: { path: "author", select: "username profilePic" },
+        populate: {
+          path: "author",
+          select: "username name bio profilePic isVerified isPrivate followers",
+        },
+      })
+      .populate({
+        path: "quotedComment",
+        select: "content media author createdAt post",
+        populate: {
+          path: "author",
+          select: "name username bio profilePic isVerified isPrivate followers",
+        },
       });
 
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
 
-    // Add view if user is authenticated and hasn't viewed before
     if (
       userId &&
       !post.views.some((view) => view.user.toString() === userId.toString())
@@ -332,10 +530,7 @@ export const deletePost = async (req, res) => {
     };
 
     await Notification.deleteMany({
-      $or: [
-        { post: id },
-        { quotedPost: id },
-      ]
+      $or: [{ post: id }, { quotedPost: id }],
     });
 
     const reposts = await Post.find({
@@ -405,8 +600,7 @@ export const repostPost = async (req, res) => {
       });
       await originalPost.save();
 
-      // Create notification for the post author
-      if (originalPost.author.toString() !== userId.toString()) { 
+      if (originalPost.author.toString() !== userId.toString()) {
         const notification = new Notification({
           user: originalPost.author,
           sender: userId,
@@ -435,7 +629,6 @@ export const repostPost = async (req, res) => {
   }
 };
 
-// New endpoints for activity modals
 export const getPostLikes = async (req, res) => {
   try {
     const { postId } = req.params;
@@ -456,10 +649,12 @@ export const getPostLikes = async (req, res) => {
 
     const totalLikes = post.likes.length;
 
-    const usersWithTimestamps = post.likes.slice(skip, skip + limitNum).map(like => ({
-      ...like.user.toObject(),
-      likedAt: like.likedAt,
-    }));
+    const usersWithTimestamps = post.likes
+      .slice(skip, skip + limitNum)
+      .map((like) => ({
+        ...like.user.toObject(),
+        likedAt: like.likedAt, 
+      }));
 
     res.status(200).json({
       users: usersWithTimestamps,
@@ -484,23 +679,25 @@ export const getPostReposts = async (req, res) => {
     const limitNum = parseInt(limit);
     const skip = (pageNum - 1) * limitNum;
 
-    const post = await Post.findById(postId);
+    const post = await Post.findById(postId).populate({
+      path: "reposts.user",
+      select: "username name profilePic isVerified repostedAt", 
+      options: { skip, limit: limitNum },
+    });
+
     if (!post) {
       return res.status(404).json({ error: "Post not found" });
     }
 
     const totalReposts = post.reposts.length;
 
-    const reposts = await Post.findById(postId)
-      .populate({
-        path: "reposts.user",
-        select: "username name profilePic isVerified",
-        options: { skip, limit: limitNum },
-      })
-      .then(post => post.reposts.slice(skip, skip + limitNum));
+    const reposts = post.reposts.slice(skip, skip + limitNum).map((repost) => ({
+      ...repost.user.toObject(),
+      repostedAt: repost.repostedAt,
+    }));
 
     res.status(200).json({
-      users: reposts.map(repost => repost.user),
+      users: reposts,
       pagination: {
         currentPage: pageNum,
         totalPages: Math.ceil(totalReposts / limitNum),
@@ -525,13 +722,23 @@ export const getPostQuotes = async (req, res) => {
     const totalQuotes = await Post.countDocuments({ quotedPost: postId });
 
     const quotes = await Post.find({ quotedPost: postId })
-      .populate("author", "username name profilePic isVerified")
+      .populate(
+        "author",
+        "username name profilePic isVerified isPrivate followers"
+      )
+      .populate({
+        path: "quotedPost",
+        populate: {
+          path: "author",
+          select: "username profilePic isVerified isPrivate followers",
+        },
+      })
       .skip(skip)
       .limit(limitNum)
       .lean();
 
     res.status(200).json({
-      users: quotes.map(quote => ({
+      users: quotes.map((quote) => ({
         ...quote.author,
         content: quote.content,
         quotePostId: quote._id,
@@ -582,7 +789,6 @@ export const getPostActivity = async (req, res) => {
 
     const activity = [];
 
-    // Likes
     post.likes.forEach((like) => {
       activity.push({
         type: "like",
@@ -591,7 +797,6 @@ export const getPostActivity = async (req, res) => {
       });
     });
 
-    // Reposts
     post.reposts.forEach((repost) => {
       activity.push({
         type: "repost",
@@ -600,7 +805,6 @@ export const getPostActivity = async (req, res) => {
       });
     });
 
-    // Quotes
     quotes.forEach((quote) => {
       activity.push({
         type: "quote",
@@ -611,7 +815,6 @@ export const getPostActivity = async (req, res) => {
       });
     });
 
-    // Sort by timestamp (newest first)
     activity.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
 
     res.status(200).json({
@@ -634,16 +837,18 @@ export const toggleSavePost = async (req, res) => {
     const isPostSaved = user.savedPosts.includes(postId);
 
     if (isPostSaved) {
-      user.savedPosts = user.savedPosts.filter(id => id.toString() !== postId);
+      user.savedPosts = user.savedPosts.filter(
+        (id) => id.toString() !== postId
+      );
       await user.save();
-      return res.status(200).json({ 
+      return res.status(200).json({
         message: "Post unsaved successfully",
         savedPosts: user.savedPosts,
       });
     } else {
       user.savedPosts.push(postId);
       await user.save();
-      return res.status(200).json({ 
+      return res.status(200).json({
         message: "Post saved successfully",
         savedPosts: user.savedPosts,
       });
@@ -667,19 +872,25 @@ export const getSavedPosts = async (req, res) => {
     const totalPosts = user.savedPosts.length;
 
     const posts = await Post.find({ _id: { $in: user.savedPosts } })
-      .populate("author", "username name profilePic isVerified")
+      .populate(
+        "author",
+        "username name bio profilePic isVerified isPrivate followers"
+      )
       .populate("likes.user", "username profilePic")
       .populate("reposts.user", "username profilePic")
       .populate({
         path: "quotedPost",
-        populate: { path: "author", select: "username profilePic" },
+        populate: {
+          path: "author",
+          select: "username name bio profilePic isVerified isPrivate followers",
+        },
       })
       .skip(skip)
       .limit(limitNum)
       .sort({ createdAt: -1 })
       .lean();
 
-    const postsWithViewCount = posts.map(post => ({
+    const postsWithViewCount = posts.map((post) => ({
       ...post,
       viewCount: Array.isArray(post.views) ? post.views.length : 0,
     }));
@@ -697,6 +908,60 @@ export const getSavedPosts = async (req, res) => {
     });
   } catch (error) {
     console.error("Error fetching saved posts:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
+  }
+};
+
+export const getLikedPosts = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { page = 1, limit = 10 } = req.query;
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    const skip = (pageNum - 1) * limitNum;
+    
+    const user = await User.findById(userId).populate("likedPosts");
+    if (!user) return res.status(404).json({ message: "User not found" });
+
+    const totalPosts = user.likedPosts.length;
+
+    const posts = await Post.find({ _id: { $in: user.likedPosts } })
+      .populate(
+        "author",
+        "username name bio profilePic isVerified isPrivate followers"
+      )
+      .populate("likes.user", "username profilePic")
+      .populate("reposts.user", "username profilePic")
+      .populate({
+        path: "quotedPost",
+        populate: {
+          path: "author",
+          select: "username name bio profilePic isVerified isPrivate followers",
+        },
+      })
+      .skip(skip)
+      .limit(limitNum)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const postsWithViewCount = posts.map((post) => ({
+      ...post,
+      viewCount: Array.isArray(post.views) ? post.views.length : 0,
+    }));
+
+    res.status(200).json({
+      posts: postsWithViewCount,
+      pagination: {
+        currentPage: pageNum,
+        totalPages: Math.ceil(totalPosts / limitNum),
+        totalPosts,
+        postsPerPage: limitNum,
+        hasNextPage: pageNum < Math.ceil(totalPosts / limitNum),
+        hasPrevPage: pageNum > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Error fetching liked posts:", error);
     res.status(500).json({ message: "Server error", error: error.message });
   }
 };
