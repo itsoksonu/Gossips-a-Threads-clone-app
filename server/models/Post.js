@@ -4,11 +4,10 @@ const postSchema = new Schema({
   author: {
     type: Schema.Types.ObjectId,
     ref: "User",
-    require: true,
+    required: true,
   },
   content: {
     type: String,
-    required: true,
     maxlength: 500,
   },
   icon: {
@@ -60,7 +59,9 @@ const postSchema = new Schema({
     default: null,
   },
   quotedPost: { type: Schema.Types.ObjectId, ref: "Post", default: null },
+  quotedComment: { type: Schema.Types.ObjectId, ref: "Comment", default: null },
   isQuoteRepost: { type: Boolean, default: false },
+  isQuoteComment: { type: Boolean, default: false },
   views: [
     {
       user: {
@@ -73,6 +74,10 @@ const postSchema = new Schema({
       },
     },
   ],
+  isDraft: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 export default model("Post", postSchema);
