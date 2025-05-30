@@ -1,14 +1,12 @@
 import multer, { diskStorage } from "multer";
 import { extname } from "path";
-import { existsSync, mkdirSync } from "fs"; // Import fs methods
+import { existsSync, mkdirSync } from "fs"; 
 
-// Ensure 'uploads' folder exists
 const uploadPath = "uploads/";
 if (!existsSync(uploadPath)) {
   mkdirSync(uploadPath);
 }
 
-// Set up storage
 const storage = diskStorage({
   destination: function (req, file, cb) {
     cb(null, uploadPath);
@@ -18,7 +16,6 @@ const storage = diskStorage({
   },
 });
 
-// File filter to allow only images & videos
 const allowedTypes = [
   "image/",
   "video/mp4",
@@ -35,7 +32,6 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Upload middleware
 const upload = multer({
   storage,
   fileFilter,
