@@ -69,7 +69,7 @@ const PostMedia = ({ mediaArray, videoRefs, isMuted, toggleMute, openModal }) =>
   const renderMediaItem = (mediaUrl, index) => {
     const mediaClasses = isSingleMedia
       ? "w-70 h-full object-cover rounded-md cursor-pointer"
-      : "h-64 w-64 object-cover rounded-md flex-shrink-0";
+      : "h-64 w-64 object-cover rounded-md";
 
     if (isVideo(mediaUrl)) {
       return (
