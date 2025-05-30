@@ -2,8 +2,6 @@ import React, { createContext, useState, useContext, useEffect, useCallback, use
 import { UserContext } from './UserContext';
 import io from 'socket.io-client';
 
-
-// eslint-disable-next-line react-refresh/only-export-components
 export const FollowContext = createContext();
 
 export const FollowProvider = ({ children }) => {
@@ -76,6 +74,4 @@ export const FollowProvider = ({ children }) => {
   );
 };
 
-
-// eslint-disable-next-line react-refresh/only-export-components
 export const useFollow = () => useContext(FollowContext);
