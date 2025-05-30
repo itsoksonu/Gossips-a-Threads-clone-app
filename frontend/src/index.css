@@ -14,7 +14,6 @@
   display: none; /* Chrome, Safari and Opera */
 }
 
-/* Custom Scrollbar Styling */
 .custom-scrollbar::-webkit-scrollbar {
   width: 8px; 
 }
@@ -32,10 +31,14 @@
   background: #777; 
 }
 
-/* Firefox Scrollbar Styling */
 .custom-scrollbar {
   scrollbar-width: thin; 
   scrollbar-color: #555 transparent; 
+}
+
+.no-scroll {
+  overflow: hidden;
+  touch-action: none; 
 }
 
 @utility input-box {
