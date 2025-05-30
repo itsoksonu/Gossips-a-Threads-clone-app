@@ -14,6 +14,9 @@ import {
   getReplies,
   getReposts,
   isFollowingMe,
+  restrictUser,
+  blockUser,
+  reportUser,
 } from "../controllers/userController.js";
 import { protect } from "../middleware/authMiddleware.js";
 import upload from "../config/multerConfig.js";
@@ -30,6 +33,9 @@ router.delete("/follow-request/:username", protect, cancelFollowRequest);
 router.get("/pending-request/:username", protect, checkPendingRequestStatus);
 router.post("/follow/:username", protect, followUser);
 router.post("/unfollow/:username", protect, unfollowUser);
+router.post("/restrict/:username", protect, restrictUser);
+router.post("/block/:username", protect, blockUser);
+router.post("/report/:username", protect, reportUser);
 router.get('/is-following-me/:username', protect, isFollowingMe);
 router.get("/:username/replies", protect, getReplies);
 router.get("/:profileId/reposts", protect, getReposts);
