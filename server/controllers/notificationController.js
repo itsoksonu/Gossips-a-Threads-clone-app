@@ -35,31 +35,26 @@ export const getUserNotifications = async (req, res) => {
   }
 };
 
-export const markNotificationAsRead = async (req, res) => {
+export const markAllNotificationsAsRead = async (req, res) => {
   try {
-    const { notificationId } = req.params;
     const userId = req.user._id;
 
-    const notification = await Notification.findById(notificationId);
-    if (!notification) {
-      return res.status(404).json({ error: "Notification not found" });
+    const result = await Notification.updateMany(
+      { user: userId, isRead: false },
+      { isRead: true }
+    );
+
+    if (result.modifiedCount === 0) {
+      return res.status(200).json({ message: "No unread notifications to mark" });
     }
 
-    if (notification.user.toString() !== userId.toString()) {
-      return res.status(403).json({ error: "Unauthorized" });
-    }
-
-    notification.isRead = true;
-    await notification.save();
-
-    res.status(200).json({ message: "Notification marked as read" });
+    res.status(200).json({ message: "All notifications marked as read" });
   } catch (error) {
-    console.error("Error marking notification as read:", error);
+    console.error("Error marking all notifications as read:", error);
     res.status(500).json({ error: "Server error", details: error.message });
   }
 };
 
-// Function to send welcome notification (called during user signup)
 export const sendWelcomeNotification = async (newUserId) => {
   try {
     const gossipsUser = await User.findOne({ username: "gossips" });
@@ -74,7 +69,7 @@ export const sendWelcomeNotification = async (newUserId) => {
       return;
     }
 
-    const welcomeMessage = `Hey ${newUser.name}! Welcome to Gossips. I hope you like this project. If so, please make sure to give it a star on GitHub and share your views on Twitter. Thanks.`;
+    const welcomeMessage = `Hey ${newUser.name}! Welcome to Gossips. I hope you like this project. If so, please make sure to give it a star on GitHub and share your views on this app. Thanks.`;
 
     const notification = new Notification({
       user: newUserId,
