@@ -141,9 +141,6 @@ const ReplyComment = ({ isOpen, onClose, commentId, parentId = null }) => {
           <p className="font-medium text-lg">Reply</p>
           <div className="flex gap-4">
             <button className="text-gray-400 hover:text-white transition-colors">
-              <Icons.draft className="h-6 w-6" />
-            </button>
-            <button className="text-gray-400 hover:text-white transition-colors">
               <Icons.more className="h-6 w-6" />
             </button>
           </div>
@@ -204,12 +201,10 @@ const ReplyComment = ({ isOpen, onClose, commentId, parentId = null }) => {
                 </div>
               )}
 
-              {/* Error message if any */}
               {error && (
                 <p className="text-red-500 text-sm mt-2">{error}</p>
               )}
 
-              {/* Media upload input (hidden) */}
               <input
                 type="file"
                 ref={fileInputRef}
