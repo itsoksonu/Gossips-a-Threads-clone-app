@@ -14,6 +14,8 @@ const UserAuthForm = ({ type }) => {
   const navigate = useNavigate();
   const formRef = useRef(null);
   const [loading, setLoading] = useState(false);
+  const [isForgotPassword, setIsForgotPassword] = useState(false); 
+  const forgotPasswordFormRef = useRef(null);
 
   const userAuthThroughServer = async (serverRoute, formData) => {
     setLoading(true);
@@ -46,8 +48,8 @@ const UserAuthForm = ({ type }) => {
     e.preventDefault();
 
     const serverRoute = type === "login" ? "/auth/login" : "/auth/signup";
-    const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/; // Email validation regex
-    const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,20}$/; // Password validation regex
+    const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
+    const passwordRegex = /^(?=.*\d)(?=.*[a-z])(?=.*[A-Z]).{6,20}$/;
 
     const form = new FormData(formRef.current);
     const formData = Object.fromEntries(form.entries());
@@ -100,6 +102,30 @@ const UserAuthForm = ({ type }) => {
     }
   };
 
+  const handleForgotPassword = async (e) => {
+    e.preventDefault();
+
+    const emailRegex = /^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/;
+    const form = new FormData(forgotPasswordFormRef.current);
+    const formData = Object.fromEntries(form.entries());
+    const { email } = formData;
+
+    if (!email || !emailRegex.test(email)) {
+      return toast.error("Enter a valid email");
+    }
+
+    setLoading(true);
+    try {
+      await axios.post(`${import.meta.env.VITE_SERVER}/auth/forgot-password`, { email });
+      toast.success("Password reset link sent to your email!");
+      setIsForgotPassword(false);
+    } catch (error) {
+      toast.error(error.response?.data?.error || "Failed to send reset link");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (token && type === "login") {
     return <Navigate to="/" />;
   }
@@ -107,88 +133,129 @@ const UserAuthForm = ({ type }) => {
   return (
     <section className="w-full h-screen flex justify-center items-center bg-neutral-950 relative">
       <Toaster />
-      <form
-        ref={formRef}
-        className="w-[80%] max-w-[400px] flex flex-col items-center"
-      >
-        <img
-          src="../images/logo.png"
-          alt="Gossips Logo"
-          className="w-20 h-20 mb-4 mx-auto"
-        />
-        <h1 className="text-white font-bold mb-4">
-          {type === "login"
-            ? "Log in with your Gossips account"
-            : "Create your Gossips account"}
-        </h1>
-
-        {type === "signup" ? (
-          <>
-            <InputBox name="name" type="text" placeholder="Full Name" />
-            <InputBox name="email" type="email" placeholder="Email" />
-          </>
-        ) : (
-          <InputBox
-            name="loginmethod"
-            type="text"
-            placeholder="Username, Phone or Email"
-          />
-        )}
-        <InputBox name="password" type="password" placeholder="Password" />
-
-        <button
-          type="submit"
-          className="w-[100%] rounded-xl p-4 text-black font-medium bg-white border border-transparent cursor-pointer flex items-center justify-center gap-2"
-          onClick={handleUserAuth}
-          disabled={loading}
-        >
-          {loading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              {type === "login" ? "Logging in..." : "Signing up..."}
-            </>
-          ) : type === "login" ? (
-            "Log in"
-          ) : (
-            "Sign up"
-          )}
-        </button>
-
-        {type === "login" && (
-          <Link to="/login">
-            <p className="text-neutral-500 text-center pt-4">Forgot password?</p>
-          </Link>
-        )}
-
-        <Link
-          to={type === "login" ? "/signup" : "/login"}
-          className="pt-4 text-white"
-        >
-          {type === "login"
-            ? "Don't have an account? Sign up"
-            : "Have an account? Log in"}
-        </Link>
-
-        <div className="w-[80%] flex items-center justify-center my-4">
-          <hr className="w-[80%] border-neutral-500 my-4" />
-          <p className="text-neutral-500 text-center px-2">or</p>
-          <hr className="w-[80%] border-neutral-500 my-4" />
-        </div>
-
-        <button
-          type="submit"
-          className="w-[100%] rounded-xl p-4 text-white font-medium bg-neutral-950 border border-neutral-800 cursor-pointer flex items-center justify-center gap-2"
-          onClick={handleGoogleAuth}
-          disabled={loading}
+      {isForgotPassword ? (
+        <form
+          ref={forgotPasswordFormRef}
+          className="w-[80%] max-w-[400px] flex flex-col items-center"
         >
           <img
-            src="../images/google.svg"
-            alt="Google Logo"
-            className="w-6 h-6"
+            src="../images/logo.png"
+            alt="Gossips Logo"
+            className="w-20 h-20 mb-4 mx-auto"
           />
-          Continue with Google
-        </button>
-      </form>
+          <h1 className="text-white font-bold mb-4">Reset Your Password</h1>
+          <InputBox name="email" type="email" placeholder="Email" />
+          <button
+            type="submit"
+            className="w-[100%] rounded-xl p-4 text-black font-medium bg-white border border-transparent cursor-pointer flex items-center justify-center gap-2"
+            onClick={handleForgotPassword}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              "Send Reset Link"
+            )}
+          </button>
+          <button
+            type="button"
+            className="text-neutral-500 text-center pt-4"
+            onClick={() => setIsForgotPassword(false)}
+          >
+            Back to Login
+          </button>
+        </form>
+      ) : (
+        <form
+          ref={formRef}
+          className="w-[80%] max-w-[400px] flex flex-col items-center"
+        >
+          <img
+            src="../images/logo.png"
+            alt="Gossips Logo"
+            className="w-20 h-20 mb-4 mx-auto"
+          />
+          <h1 className="text-white font-bold mb-4">
+            {type === "login"
+              ? "Log in with your Gossips account"
+              : "Create your Gossips account"}
+          </h1>
+
+          {type === "signup" ? (
+            <>
+              <InputBox name="name" type="text" placeholder="Full Name" />
+              <InputBox name="email" type="email" placeholder="Email" />
+            </>
+          ) : (
+            <InputBox
+              name="loginmethod"
+              type="text"
+              placeholder="Username, Phone or Email"
+            />
+          )}
+          <InputBox name="password" type="password" placeholder="Password" />
+
+          <button
+            type="submit"
+            className="w-[100%] rounded-xl p-4 text-black font-medium bg-white border border-transparent cursor-pointer flex items-center justify-center gap-2"
+            onClick={handleUserAuth}
+            disabled={loading}
+          >
+            {loading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                {type === "login" ? "Logging in..." : "Signing up..."}
+              </>
+            ) : type === "login" ? (
+              "Log in"
+            ) : (
+              "Sign up"
+            )}
+          </button>
+
+          {type === "login" && (
+            <button
+              type="button"
+              className="text-neutral-500 text-center pt-4"
+              onClick={() => setIsForgotPassword(true)}
+            >
+              Forgot password?
+            </button>
+          )}
+
+          <Link
+            to={type === "login" ? "/signup" : "/login"}
+            className="pt-4 text-white"
+          >
+            {type === "login"
+              ? "Don't have an account? Sign up"
+              : "Have an account? Log in"}
+          </Link>
+
+          <div className="w-[80%] flex items-center justify-center my-4">
+            <hr className="w-[80%] border-neutral-500 my-4" />
+            <p className="text-neutral-500 text-center px-2">or</p>
+            <hr className="w-[80%] border-neutral-500 my-4" />
+          </div>
+
+          <button
+            type="submit"
+            className="w-[100%] rounded-xl p-4 text-white font-medium bg-neutral-950 border border-neutral-800 cursor-pointer flex items-center justify-center gap-2"
+            onClick={handleGoogleAuth}
+            disabled={loading}
+          >
+            <img
+              src="../images/google.svg"
+              alt="Google Logo"
+              className="w-6 h-6"
+            />
+            Continue with Google
+          </button>
+        </form>
+      )}
 
       <div className="flex flex-wrap text-nowrap gap-4 absolute bottom-4 text-neutral-500 text-sm mx-6 items-center justify-center">
         <p>© 2025</p>
