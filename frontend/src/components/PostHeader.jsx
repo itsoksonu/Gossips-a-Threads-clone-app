@@ -1,4 +1,4 @@
-import React, { useContext } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { Icons } from "./icons";
 import {
   DropdownMenu,
@@ -8,6 +8,7 @@ import {
   DropdownMenuSeparator,
 } from "../components/ui/dropdown-menu";
 import { UserContext } from "../contexts/UserContext";
+import ProfileCard from "./ProfileCard";
 
 const formatCreatedAt = (createdAt) => {
   const postDate = new Date(createdAt);
@@ -43,19 +44,63 @@ const PostHeader = ({
   handleProfileClick,
   handleIconClick,
   hideActions = false,
-  isSaved,
+  isSaved: propIsSaved,
   isSaving,
+  isDraft = false,
+  postId,
+  currentUserFollowing,
+  isPrivate,
 }) => {
   const {
-    userAuth: { username },
+    userAuth: { username, savedPosts },
   } = useContext(UserContext);
+  const [isSaved, setIsSaved] = useState(propIsSaved);
+  const [isUsernameHovered, setIsUsernameHovered] = useState(false);
+
+  useEffect(() => {
+    setIsSaved(
+      propIsSaved || savedPosts?.some((id) => id.toString() === postId)
+    );
+  }, [propIsSaved, savedPosts, postId]);
 
   return (
     <div className="flex flex-row justify-start items-center relative">
-      <div onClick={handleProfileClick} className="cursor-pointer flex items-center">
-        <p className="text-white font-medium line-clamp-1 flex items-center hover:underline">
-          {author.username}
-        </p>
+      <div
+        onClick={handleProfileClick}
+        className="cursor-pointer flex items-center"
+      >
+        <div
+          className="relative inline-block"
+          onMouseEnter={() => setIsUsernameHovered(true)}
+          onMouseLeave={() => setIsUsernameHovered(false)}
+        >
+          <p className="text-white font-medium line-clamp-1 flex items-center hover:underline">
+            {author.username}
+          </p>
+          {isUsernameHovered && (
+            <div
+              className="absolute z-50 top-full left-0 mt-2 w-[300px] transition-opacity duration-200 ease-out"
+              style={{ opacity: isUsernameHovered ? 1 : 0 }}
+              onMouseEnter={() => setIsUsernameHovered(true)}
+              onMouseLeave={() => setIsUsernameHovered(false)}
+            >
+              <ProfileCard
+                name={author.name || author.username}
+                username={author.username}
+                bio={author.bio || ""}
+                followers={author.followers?.length || 0}
+                following={currentUserFollowing || []}
+                profilePic={
+                  author.profilePic || "https://via.placeholder.com/96"
+                }
+                isPrivate={isPrivate || false}
+                isVerified={author.isVerified || false}
+                isModal={false} 
+                onClose={() => setIsUsernameHovered(false)}
+              />
+            </div>
+          )}
+        </div>
       </div>
       {author.isVerified && (
         <span className="pl-1 pt-0.5 inline-flex items-center">
@@ -81,7 +126,15 @@ const PostHeader = ({
               align="end"
               className="shadow-xl bg-[#181818] z-[999] rounded-2xl w-[250px] mt-1 p-0 border border-neutral-700"
             >
-              {author.username === username ? (
+              {isDraft && author.username === username ? (
+                <DropdownMenuItem
+                  onClick={(e) => handleIconClick(e, "delete-draft")}
+                  className="flex justify-between items-center text-red-500 p-3 mx-2 tracking-normal select-none font-semibold m-2 cursor-pointer text-[15px] active:bg-neutral-950 hover:bg-neutral-800 hover:rounded-xl outline-none"
+                >
+                  <span>Delete draft</span>
+                  <Icons.delete />
+                </DropdownMenuItem>
+              ) : author.username === username ? (
                 <>
                   <DropdownMenuItem
                     onClick={(e) => handleIconClick(e, "save")}
