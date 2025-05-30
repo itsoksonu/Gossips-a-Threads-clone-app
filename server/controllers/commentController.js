@@ -50,7 +50,6 @@ export const replyOnPost = async (req, res) => {
       });
     }
 
-    // Create notification for the post author or parent comment author
     const post = await Post.findById(postId);
     if (parentId) {
       const parentComment = await Comment.findById(parentId);
@@ -143,7 +142,6 @@ export const createNestedComment = async (req, res) => {
       $inc: { replyCount: 1 },
     });
 
-    // Create notification for the parent comment author
     const parentComment = await Comment.findById(newComment.parent);
     if (parentComment.author.toString() !== userId.toString()) {
       const notification = new Notification({
@@ -159,7 +157,6 @@ export const createNestedComment = async (req, res) => {
       await notification.save();
     }
 
-    // Notify post author only if it's a top-level comment and not the same as the parent author
     const post = await Post.findById(postId);
     if (
       !parentComment.parent &&
@@ -212,7 +209,7 @@ export const getCommentsWithReplies = async (req, res) => {
       .sort({ createdAt: -1 })
       .skip(parseInt(skip))
       .limit(parseInt(limit))
-      .populate("author", "username profilePic isVerified")
+      .populate("author", "username name bio profilePic isVerified isPrivate followers")
       .populate({
         path: "likes.user",
         select: "username profilePic",
@@ -226,7 +223,7 @@ export const getCommentsWithReplies = async (req, res) => {
         })
           .sort({ createdAt: 1 })
           .limit(5)
-          .populate("author", "username profilePic isVerified")
+          .populate("author", "username name bio profilePic isVerified isPrivate followers")
           .populate({
             path: "likes.user",
             select: "username profilePic",
@@ -270,7 +267,7 @@ export const getRepliesForComment = async (req, res) => {
       .sort({ createdAt: 1 })
       .skip(skip)
       .limit(limitNum)
-      .populate("author", "username profilePic isVerified")
+      .populate("author", "username name bio profilePic isVerified isPrivate followers")
       .populate({
         path: "likes.user",
         select: "username profilePic",
@@ -312,7 +309,7 @@ export const getComments = async (req, res) => {
     const total = await Comment.countDocuments(query);
 
     const comments = await Comment.find(query)
-      .populate("author", "username profilePic isVerified")
+      .populate("author", "username name bio profilePic isVerified isPrivate followers")
       .populate({
         path: "likes.user",
         select: "username profilePic",
@@ -364,7 +361,6 @@ export const likeComment = async (req, res) => {
 
     await comment.save();
 
-    // Create notification when a comment is liked (only when liking, not when unliking)
     if (!isLiked && comment.author.toString() !== userId.toString()) {
       const notification = new Notification({
         user: comment.author,
@@ -464,10 +460,10 @@ export const getComment = async (req, res) => {
         path: "post",
         populate: {
           path: "author",
-          select: "name username profilePic isVerified isPrivate",
+          select: "name username bio profilePic isVerified isPrivate followers",
         },
       })
-      .populate("author", "name username profilePic isVerified isPrivate");
+      .populate("author", "name username bio profilePic isVerified isPrivate followers");
 
     if (!comment) {
       return res.status(404).json({ error: "Comment not found" });
