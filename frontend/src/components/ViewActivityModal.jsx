@@ -10,7 +10,6 @@ import { useFollow } from "../contexts/FollowContext.jsx";
 
 Modal.setAppElement("#root");
 
-// Modal for displaying users (Likes, Reposts, Quotes) with Infinite Scroll
 const UserListModal = ({ isOpen, onClose, title, fetchUrl, token, post }) => {
   const navigate = useNavigate();
   const { userAuth } = useContext(UserContext);
@@ -27,15 +26,15 @@ const UserListModal = ({ isOpen, onClose, title, fetchUrl, token, post }) => {
   useEffect(() => {
     if (!isOpen) {
       document.body.style.overflow = "unset";
-      setUserList([]); // Reset user list when modal closes
-      setPage(1); // Reset page
+      setUserList([]); 
+      setPage(1);
       return;
     }
     document.body.style.overflow = "hidden";
 
     const fetchUsers = async (pageNum) => {
-      setLoading(pageNum === 1); // Show main loading spinner only on initial fetch
-      setIsFetchingMore(pageNum > 1); // Show "Loading more" spinner for subsequent fetches
+      setLoading(pageNum === 1);
+      setIsFetchingMore(pageNum > 1);
       try {
         const response = await axios.get(`${fetchUrl}?page=${pageNum}&limit=${limit}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -71,7 +70,7 @@ const UserListModal = ({ isOpen, onClose, title, fetchUrl, token, post }) => {
       if (!scrollContainer) return;
 
       const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
-      const isNearBottom = scrollTop + clientHeight >= scrollHeight - 50; // Trigger 50px before bottom
+      const isNearBottom = scrollTop + clientHeight >= scrollHeight - 50;
 
       if (isNearBottom && !loading && !isFetchingMore && page < totalPages) {
         setPage((prev) => prev + 1);
@@ -98,6 +97,19 @@ const UserListModal = ({ isOpen, onClose, title, fetchUrl, token, post }) => {
   const handleQuoteClick = (username, postId) => {
     navigate(`/${username}/post/${postId}`);
     onClose();
+  };
+
+  const getActionTimestamp = (user, activityType) => {
+    switch (activityType.toLowerCase()) {
+      case "likes":
+        return user.likedAt || user.createdAt;
+      case "reposts":
+        return user.repostedAt || user.createdAt;
+      case "quotes":
+        return user.createdAt;
+      default:
+        return user.createdAt;
+    }
   };
 
   const formatCreatedAt = (createdAt) => {
@@ -226,7 +238,7 @@ const UserListModal = ({ isOpen, onClose, title, fetchUrl, token, post }) => {
                           </span>
                         )}
                         <p className="text-neutral-500 text-sm ml-1 mt-0.5 flex-shrink-0">
-                          {formatCreatedAt(user.createdAt || new Date())}
+                          {formatCreatedAt(getActionTimestamp(user, title))}
                         </p>
                       </div>
                       <p className="text-neutral-400 text-sm truncate">{user.name}</p>
