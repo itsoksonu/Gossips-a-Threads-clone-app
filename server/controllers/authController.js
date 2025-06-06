@@ -16,11 +16,11 @@ if (!process.env.BREVO_EMAIL || !process.env.BREVO_SMTP_KEY) {
 }
 
 const transporter = nodemailer.createTransport({
-  host: "smtp-relay.brevo.com",
+  host: "YOUR_HOST_ID",
   port: 587,
   secure: false,
   auth: {
-    user: "8a7ab6002@smtp-brevo.com",
+    user: "YOUR_USER_ID",
     pass: process.env.BREVO_SMTP_KEY,
   },
 });
