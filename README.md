@@ -9,8 +9,10 @@ Gossips is a social media application inspired by Meta's Threads, allowing users
 
 - User authentication and registration
 - Post creation and editing (threads)
-- Like and comment functionality
+- Like, comment, repost and quote functionality
 - Follow/unfollow users
+- private profile with follow request
+- chat feature
 - Responsive design for all devices
 - Backend REST API with secure authentication
 - Real-time updates for posts and interactions
@@ -33,7 +35,6 @@ Gossips is a social media application inspired by Meta's Threads, allowing users
    ```bash
    git clone https://github.com/itsoksonu/Gossips-a-Threads-clone-app.git
    cd Gossips-a-Threads-clone-app
-````
 
 2. **Install dependencies for client and server**
    ```bash
