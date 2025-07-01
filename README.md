@@ -1,5 +1,4 @@
 
-````markdown
 # Gossips - A Threads Clone App
 
 Gossips is a social media application inspired by Meta's Threads, allowing users to share short posts, interact with others, and follow trending conversations in real time. Built using the MERN (MongoDB, Express, React, Node.js) stack, Gossips offers a familiar yet fresh experience for social microblogging.
