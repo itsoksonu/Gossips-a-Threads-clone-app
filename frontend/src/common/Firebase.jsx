@@ -9,9 +9,9 @@ const firebaseConfig = {
     storageBucket: "",
     messagingSenderId: "",
     appId: ""
-  };
+  }; // Fill your config details here
 
-// eslint-disable-next-line no-unused-vars
+
 const app = initializeApp(firebaseConfig);
 
 // google auth
