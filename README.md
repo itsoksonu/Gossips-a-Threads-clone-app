@@ -5,6 +5,14 @@ Gossips is a social media application inspired by Meta's Threads, allowing users
 
 ---
 
+## 🌐 Live Demo
+
+https://gossipsss.netlify.app
+
+⚠️ Please note: The server is hosted on a free tier, so there may be a 15–20 second delay during initial loading.
+
+---
+
 ## 🚀 Features
 
 - User authentication and registration
@@ -76,14 +84,6 @@ This project is licensed under the MIT License.
 ## 🤝 Contributing
 
 Contributions are welcome! Please open issues or submit pull requests to help improve the app.
-
----
-
-## 🌐 Live Demo
-
-https://gossipsss.netlify.app
-
-⚠️ Please note: The server is hosted on a free tier, so there may be a 15–20 second delay during initial loading.
 
 ---
 
