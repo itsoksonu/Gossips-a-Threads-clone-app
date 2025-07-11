@@ -83,6 +83,8 @@ Contributions are welcome! Please open issues or submit pull requests to help im
 
 https://gossipsss.netlify.app
 
+⚠️ Please note: The server is hosted on a free tier, so there may be a 15–20 second delay during initial loading.
+
 ---
 
 ## 📫 Contact
