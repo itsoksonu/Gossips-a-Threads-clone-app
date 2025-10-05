@@ -46,7 +46,7 @@ https://gossipsss.netlify.app
 
 2. **Install dependencies for client and server**
    ```bash
-   cd client
+   cd frontend
    npm install
    cd ../server
    npm install
@@ -58,15 +58,15 @@ https://gossipsss.netlify.app
 4. **Run the application**
 
    ```bash
-   cd server
+   cd frontend
    npm run dev
    ```
 
    Then in a separate terminal:
 
    ```bash
-   cd client
-   npm run dev
+   cd server
+   npm start
    ```
 
 ## 📄 License
